@@ -1,7 +1,7 @@
 # HANDOFF: RP2040-Zero companion for JC02 rangefinder + RunCam Split 3 Micro
 
-Handoff v2, 2026-11-13. Written for Claude Code running on Opus.
-Changelog v2: added the text pinout reference (pad map, v6 and v7 connection tables, board photo notes) so the pinout images are no longer required. Pad positions of GP8 and GP14 are unverified.
+Handoff v3, 2026-11-13. Written for Claude Code running on Opus.
+Changelog v3: read the JC02 wiring from the board photos, confirmed the v6 layout is what is soldered, and re-anchored the pad map to the photographed side. Changelog v2: added the text pinout reference (pad map, v6 and v7 connection tables, board photo notes) so the pinout images are no longer required. Pad positions of GP8 and GP14 are unverified.
 Repo: https://github.com/opsecfreak/RuncamMicroSplitv3_CustomPCB
 
 Start Claude Code in the cloned repo and select Opus (`/model opus`), then say: "Read HANDOFF.md and start at Phase 0."
@@ -63,9 +63,11 @@ Keep every pin in one config block. If the PIO UART misbehaves, the fallback is 
 
 ### Pinout reference (text version, replaces the pinout images)
 
-RP2040-Zero pad map. Front view (component side up), USB-C at the top. 23 edge pads: 9 left, 9 right, 5 bottom.
+RP2040-Zero pad map. 23 edge pads: 9 on the power edge, 9 on the GPIO edge, 5 on the bottom. Listed with USB-C at the top.
 
-| Left edge, top to bottom | Right edge, top to bottom | Bottom edge, left to right |
+Orientation, from Alex's board photos of 2026-11-13: looking at the side with the RP2040 chip and crystal, USB-C up, the GPIO edge (GP0 at the top) is on the LEFT and the power edge (5V at the top) is on the RIGHT. This was worked out from the JC02 wire colors and the cap position, not from silkscreen, which is unreadable in the photos. Confirm against the silkscreen before drawing the PCB footprint, because a mirrored footprint kills the board.
+
+| Power edge, top to bottom | GPIO edge, top to bottom | Bottom edge |
 |---|---|---|
 | 5V | GP0 | GP13 |
 | GND | GP1 | GP12 |
@@ -80,9 +82,9 @@ RP2040-Zero pad map. Front view (component side up), USB-C at the top. 23 edge p
 - GP16: onboard WS2812 RGB LED. GP17 to GP25: back-side solder points only.
 - UART0: GP0 TX, GP1 RX. UART1: GP4 TX, GP5 RX (GP8/GP9 are the same UART1 peripheral, not a third port).
 - All GPIO 3.3V only, not 5V tolerant.
-- Status of this map: UNVERIFIED on two points. An earlier chat drew it as 8 left / 8 right / 7 bottom (GP14 and GP8 on the bottom row). Alex's board photo of 2026-11-13 shows 5 pads on the bottom edge, which matches the 9 / 9 / 5 map above, but the photo is too blurred to read any silkscreen label. Confirm GP8 and GP14 positions against the silkscreen or Waveshare's wiki before anything is soldered to those two pads or placed on the PCB footprint. The pads used by this build (5V, GND, 3V3, GP0 to GP7) are in the same position in both versions.
+- Status of this map: the edge order above is supported by the photos for 5V, GND, 3V3 and GP0 to GP2. Two points stay UNVERIFIED: (1) whether GP8 and GP14 are the last pads of the side edges (9 / 9 / 5, used here, and the photos show 5 bottom pads) or sit on the bottom row (8 / 8 / 7, drawn in an earlier chat); (2) the left-to-right order of the bottom row.
 
-Connection table, v6 layout (what is soldered now, per chat history):
+Connection table, v6 layout (what is soldered now, confirmed against the 2026-11-13 board photos except where noted):
 
 | From | Wire | To RP2040-Zero pad |
 |---|---|---|
@@ -113,12 +115,23 @@ Connection table, v7 target:
 | 470uF 16V cap | 3V3 to GND | Keep close to the 3V3 pad |
 | 5V BEC | Split power in, RP2040 5V pad, CR8 5V | 1A or more for the Split. Common ground everywhere. |
 
-What the 2026-11-13 board photos show (two blurred close-ups of the RP2040-Zero, front side, USB-C up):
+What the 2026-11-13 board photos show (two close-ups, chip side, USB-C up, soft focus). The JC02 is still wired in the v6 layout:
 
-- A radial electrolytic marked 470uF 16V sits off the right side of the board. This is the brownout cap.
-- Yellow, red, black and a grey/white wire are soldered and routed across the face of the board from the upper left toward the right edge.
-- Castellated pads are unpopulated on the bottom edge (5 pads visible).
-- Which wire lands on which pad cannot be read from the photos. Do not derive wiring from them. Ask Alex to confirm each wire against the v6 table above, or to supply a sharp, well-lit photo of both sides.
+| Pad position in photo | Wire seen | Matches |
+|---|---|---|
+| Left edge, pad 1 (top) | black | GP0, JC02 RX |
+| Left edge, pad 2 | yellow | GP1, JC02 TX |
+| Left edge, pad 3 | red | GP2, JC02 Power ON |
+| Left edge, pad 4 and down | empty | GP3 onward free |
+| Right edge, pad 1 (top) | empty | 5V unused |
+| Right edge, pad 2 | white, plus one cap lead | GND, JC02 GND |
+| Right edge, pad 3 | dark wire (probably blue), plus other cap lead | 3V3, JC02 VCC. Wire color not certain in the photo. |
+| Bottom edge | 5 pads, all empty | |
+
+- The cap body is marked 470uF 16V and sits off the right (power) edge.
+- The harness leaves toward the lower right in a black sleeve. Green is not connected.
+- Nothing is on GP4 to GP7 yet, so the Split, the CR8 and the JC02 move to PIO are not wired.
+- Confidence: wire color to pad position is clear for black, yellow, red and white. The 3V3 wire and the exact cap lead pads are probable, not certain. Pad names are inferred from the harness colors.
 
 ## 3. Existing code and assets (Alex adds these to the repo first)
 
@@ -247,7 +260,7 @@ Phase 5, docs
 
 1. Has `runcam_probe.py` been run on the Split yet? If yes, paste the log.
 2. Split TX idle voltage measurement?
-3. Is the JC02 still on GP0/GP1, or already moved to GP6/GP7?
+3. Confirm the 3V3 wire is the blue one and both cap leads sit on GND and 3V3 (photos show JC02 still on GP0/GP1/GP2).
 4. CRSF channel assignments for record, laser mode, OSD page, mark, menu.
 5. PCB target: home etch or fab, and board size limit.
 6. Is an inline OSD chip acceptable if the Split refuses OSD writes?
