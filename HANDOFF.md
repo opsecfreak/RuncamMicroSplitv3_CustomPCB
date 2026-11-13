@@ -1,7 +1,7 @@
 # HANDOFF: RP2040-Zero companion for JC02 rangefinder + RunCam Split 3 Micro
 
-Handoff v3, 2026-11-13. Written for Claude Code running on Opus.
-Changelog v3: read the JC02 wiring from the board photos, confirmed the v6 layout is what is soldered, and re-anchored the pad map to the photographed side. Changelog v2: added the text pinout reference (pad map, v6 and v7 connection tables, board photo notes) so the pinout images are no longer required. Pad positions of GP8 and GP14 are unverified.
+Handoff v4, 2026-11-13. Written for Claude Code running on Opus.
+Changelog v4: protocol section now uses the youdao doc text as primary reference, with the diff against the RunCam support article written in. Changelog v3: read the JC02 wiring from the board photos, confirmed the v6 layout is what is soldered, and re-anchored the pad map to the photographed side. Changelog v2: added the text pinout reference (pad map, v6 and v7 connection tables, board photo notes) so the pinout images are no longer required. Pad positions of GP8 and GP14 are unverified.
 Repo: https://github.com/opsecfreak/RuncamMicroSplitv3_CustomPCB
 
 Start Claude Code in the cloned repo and select Opus (`/model opus`), then say: "Read HANDOFF.md and start at Phase 0."
@@ -160,10 +160,15 @@ Version numbering continues from here: firmware is `main.py v7` next, probe is `
 
 ## 4. RunCam Device Protocol (starting reference, verify it)
 
-Alex's protocol link (JavaScript-rendered, could not be read by a plain fetch, open it in a browser tool or ask Alex for a PDF export):
-https://share.note.youdao.com/coshare/index.html?token=9AD3F89F0B92488E8241F58CAEDF7939&gid=29699666&_time=1794594300867
+Primary reference: `docs/reference/RunCam_Device_Protocol_youdao.md`. This is the text of Alex's youdao protocol doc, supplied by him on 2026-11-13 (original link: https://share.note.youdao.com/coshare/index.html?token=9AD3F89F0B92488E8241F58CAEDF7939&gid=29699666&_time=1794594300867). The table below has been diffed against it. Still cross-check Betaflight `rcdevice.c/.h` and ArduPilot `AP_RunCam` for the parts the doc leaves out. Real hardware wins over all documents.
 
-The table below comes from RunCam's support article of the same name. Diff it against the youdao doc and against Betaflight `rcdevice.c/.h` and ArduPilot `AP_RunCam`. If they disagree, the youdao doc and real hardware win.
+Diff result, youdao doc versus the RunCam support article:
+- Commands 0x00 to 0x04, 0x10, 0x11, 0x13 and 0x20 to 0x24 match byte for byte.
+- The youdao doc lists feature bits 0 to 7 only. Bit 9 (attitude request) and command 0x50 appear only in the support article. Do not rely on them.
+- The youdao doc gives the full setting type table, which was garbled in the support article: UINT8 0, INT8 1, UINT16 2, INT16 3, FLOAT 8, TEXT_SELECTION 9, STRING 10, FOLDER 11, INFO 12.
+- Reserved setting types: 0 charset TEXT_SELECTION (read/write), 1 columns UINT8 (read only), 2 TV mode TEXT_SELECTION (read/write), 3 SD capacity STRING (read only), 4 remaining record time STRING (read only), 5 resolution TEXT_SELECTION (read/write), 6 camera time STRING (read/write), 7 to 19 reserved.
+- Neither document states the baud rate, the CRC start value, or which bytes the CRC covers. The youdao doc does not name the CRC algorithm at all. CRC8 DVB-S2 comes from the support article and the open-source implementations.
+- Gaps in the youdao doc to resolve from Betaflight/ArduPilot source and then on hardware: no response format for camera control (0x01); the 0x10 and 0x11 response tables do not list the 0xCC header byte; the 0x13 response says 4 bytes but lists 3 fields; the 0x11 table has min and max descriptions swapped; no responses are defined for the display commands 0x20 to 0x24; FOLDER text refers to "Get Detail Command(0x7)", which is not a defined command.
 
 - Every packet starts with `0xCC`. Last byte is CRC8 DVB-S2, polynomial 0xD5, init 0, over all bytes before the CRC. Do not use polynomial 0x07 (bug found in a community example).
 - Baud is not in the spec. 115200 8N1 is what Betaflight and ArduPilot use.
